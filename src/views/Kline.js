@@ -31,13 +31,22 @@ export const KlineCharts = {
       socketJS: null,
       stompClient: null,
       tickerTimestamp: 0,
-      historyTimestamp: 0
+      historyTimestamp: 0,
+      isFirstSub: true,
+      hasSubHistory: false
     }
   },
   watch: {
     'klineData': {
       handler(newVal, oldVal) {},
       deep: true
+    },
+    'isLoading': {
+      handler(newVal, oldVal) {
+        console.log(newVal)
+      },
+      deep: true,
+      immediate: true
     }
   },
   methods: {
@@ -46,12 +55,13 @@ export const KlineCharts = {
      * 订阅历史消息 
      */
     subHistory(){
-      this.stompClient.subscribe(`/topic/batch.kline.${chartResolution[this.resolution]}.btcusdt`,msg => {
+      this.stompClient.subscribe(`/topic/batch.kline.${chartResolution[this.resolution]}.btcusdt`,async msg => {
         let body = JSON.parse(msg.body);
         let context = JSON.parse(body.context);
         let parseData = context.data;
         
-       this.handleHistory(parseData)
+        this.handleHistory(parseData)
+        this.hasSubHistory = true
         // c.forEach((item, index, array) => {
         //   m.push([
         //     new Date(item.timestamp * 1000).toISOString(),
@@ -69,12 +79,14 @@ export const KlineCharts = {
      * 订阅实时消息
      */,
     subTicker(){
-      this.stompClient.subscribe(`/topic/kline.${chartResolution[this.resolution]}.btcusdt`, msg => {
+      this.stompClient.subscribe(`/topic/kline.${chartResolution[this.resolution]}.btcusdt`,async msg => {
 
         let body = JSON.parse(msg.body)
         let context = JSON.parse(body.context)
         let parseData = context.data
+        console.log(parseData)
         this.handleTicker(parseData)
+        this.hasSubHistory = false
         // if (p === c.timestamp) {
         //   return;
         // }
@@ -91,6 +103,7 @@ export const KlineCharts = {
         // }
         
       })
+      
     },
     /**
      * 处理历史数据
@@ -118,8 +131,8 @@ export const KlineCharts = {
     list.sort((a, b) => a.time - b.time);
     
     this.klineData = list;
+    this.isLoading = true
     console.log(this.klineData, '历史数据')
-    this.isLoading = true;
    },
    /**
     * 处理实时数据
@@ -138,7 +151,7 @@ export const KlineCharts = {
     if (!this.datafeed) {
       return;
     }
-    if(this.tickerTimestamp!=data.timestamp){
+    // if(this.tickerTimestamp!=data.timestamp){
       this.tickerTimestamp = data.timestamp
       this.datafeed.updateData({
         bars: [bar],
@@ -147,24 +160,31 @@ export const KlineCharts = {
         },
       });
       console.log(bar,'ticker')
-    }
+    // }
     
    },
     /**
      * 初始化WebSocket
      */
    initSockJs() {
-      let m = []
-      let p = ''
       this.socketJS = new SockJS(`http://10.10.10.245:20007/websocket?access_token=7b3e23e3-2f4a-4531-8fd0-e4d19faa956f`)
       this.stompClient = stomp.over(this.socketJS,{debug:false})
 
-      this.stompClient.connect({},async () => {
+      this.stompClient.connect({},() => {
+        const ps = new Promise((resolve,reject)=>{
+          this.subHistory()
+          resolve()
+        })
 
+
+        ps.then(()=>{
+          this.subTicker()
+        })
         /**
          * 订阅历史数据
          */
-        await this.subHistory()
+
+        
         // this.stompClient.subscribe("/topic/batch.kline.1min.btcusdt",msg => {
         //   let body = JSON.parse(msg.body);
         //   let context = JSON.parse(body.context);
@@ -187,7 +207,7 @@ export const KlineCharts = {
         /**
          * 订阅实时数据
          */
-        await this.subTicker()
+        
         // this.stompClient.subscribe("/topic/kline.1min.btcusdt", msg => {
         //   if (m.length <= 0) {
         //     return;
@@ -302,7 +322,7 @@ export const KlineCharts = {
     delayAwait() {
       return new Promise((resolve, reject) => {
         this.awaitCount++;
-        // console.log(`>> Await count:: ${this.awaitCount * 300}ms`);
+        console.log(`>> Await count:: ${this.awaitCount * 300}ms`);
         if (this.isLoading) {
           return resolve(this.klineData);
         } else {
@@ -326,7 +346,7 @@ export const KlineCharts = {
             params.resolution,
             params.from,
             params.to,
-            params.firstDataRequest
+            this.isFirstSub
           ).then((d) => d);
         },
         config: () => this.defaultConfig(),
@@ -391,25 +411,31 @@ export const KlineCharts = {
     async getBars(symbol, resolution, from, to, isFirst) {
       console.log('----isFirst----', isFirst)
       if (this.resolution !== resolution && this.socket) {
-        this.socket.send(
-          JSON.stringify({
-            event: 'removeChannel',
-            channel: `market.BTC/USDT.kline.${chartResolution[this.resolution]}`
-          })
-        )
-        this.socket.send(
-          JSON.stringify({
-            event: 'addChannel',
-            channel: `market.BTC/USDT.kline.${chartResolution[resolution]}`
-          })
-        )
-        // this.subHistory()
-        // this.subTicker()
+        // this.socket.send(
+        //   JSON.stringify({
+        //     event: 'removeChannel',
+        //     channel: `market.BTC/USDT.kline.${chartResolution[this.resolution]}`
+        //   })
+        // )
+        // this.socket.send(
+        //   JSON.stringify({
+        //     event: 'addChannel',
+        //     channel: `market.BTC/USDT.kline.${chartResolution[resolution]}`
+        //   })
+        // )
+        console.log('切换分辨率',resolution)
+        this.subHistory()
+        this.subTicker()
+        this.isFirstSub = false
         this.resolution = resolution
       }
-      if (this.isLoading && !this.klineData.length) {
-        this.isLoading = false
-      }
+      /**
+       * 
+       */
+      console.log(this.klineData.length)
+      // if (this.isLoading && !this.klineData.length) {
+      //   this.isLoading = false
+      // }
       const data = await this.delayAwait()
       this.klineData = []
       this.awaitCount = 0
@@ -536,9 +562,11 @@ export const KlineCharts = {
     }
   },
   created() {
+    
     this.initDatafeed()
     // this.initWebSocket()
     this.initSockJs()
+    
   },
   mounted() {
     window.addEventListener(
