@@ -25,11 +25,13 @@ export const KlineCharts = {
       datafeed: null,
       socket: null,
       klineData: [],
-      resolution: "D",
+      resolution: '1',
       awaitCount: 0,
       isLoading: false,
       socketJS: null,
       stompClient: null,
+      tickerTimestamp: 0,
+      historyTimestamp: 0
     }
   },
   watch: {
@@ -43,45 +45,90 @@ export const KlineCharts = {
      * 
      * 订阅历史消息 
      */
-    subHistory(){}
+    subHistory(){
+      this.stompClient.subscribe(`/topic/batch.kline.${chartResolution[this.resolution]}.btcusdt`,msg => {
+        let body = JSON.parse(msg.body);
+        let context = JSON.parse(body.context);
+        let parseData = context.data;
+        
+       this.handleHistory(parseData)
+        // c.forEach((item, index, array) => {
+        //   m.push([
+        //     new Date(item.timestamp * 1000).toISOString(),
+        //     item.open,
+        //     item.close,
+        //     item.low,
+        //     item.high
+        //   ]);
+        //   console.info(item, '这里是历史数据')
+        // });
+      });
+    }
     /**
      * 
      * 订阅实时消息
      */,
     subTicker(){
+      this.stompClient.subscribe(`/topic/kline.${chartResolution[this.resolution]}.btcusdt`, msg => {
 
+        let body = JSON.parse(msg.body)
+        let context = JSON.parse(body.context)
+        let parseData = context.data
+        this.handleTicker(parseData)
+        // if (p === c.timestamp) {
+        //   return;
+        // }
+        // p = c.timestamp;
+        // m.push([
+        //   new Date(c.timestamp * 1000).toISOString(),
+        //   c.open,
+        //   c.close,
+        //   c.low,
+        //   c.high
+        // ]);
+        // if (m.length > 100) {
+        //   m.pop();
+        // }
+        
+      })
     },
     /**
      * 处理历史数据
     */
    handleHistory(data){
-    //  console.log(data,'1')
     const list = [];
     const is1D = this.resolution === "D";
+    
     for (let i = 0; i < data.length; i++) {
-      list.push({
-        time: is1D ? data[i].timestamp*1000 + 86400000 : data[i].timestamp*1000,
-        open: data[i].open,
-        high: data[i].high,
-        low: data[i].low,
-        close: data[i].close,
-        volume: data[i].amount,
-      });
+      if(this.historyTimestamp!=data[i].timestamp){
+        this.historyTimestamp = data[i].timestamp
+        list.push({
+          time: is1D ? data[i].id*1000 + 86400000 : data[i].id*1000,
+          open: data[i].open,
+          high: data[i].high,
+          low: data[i].low,
+          close: data[i].close,
+          volume: data[i].amount,
+        });
+
+      }
+      
     }
     
     list.sort((a, b) => a.time - b.time);
     
     this.klineData = list;
-    console.log(this.klineData)
+    console.log(this.klineData, '历史数据')
     this.isLoading = true;
    },
    /**
     * 处理实时数据
     */
    handleTicker(data){
+
     const is1D = this.resolution === "D";
     const bar = {
-      time: is1D ? data.timestamp*1000 + 86400000 : data.timestamp*1000,
+      time: is1D ? data.id*1000 + 86400000 : data.id*1000,
       open: data.open,
       high: data.high,
       low: data.low,
@@ -91,12 +138,17 @@ export const KlineCharts = {
     if (!this.datafeed) {
       return;
     }
-    this.datafeed.updateData({
-      bars: [bar],
-      meta: {
-        noData: false
-      },
-    });
+    if(this.tickerTimestamp!=data.timestamp){
+      this.tickerTimestamp = data.timestamp
+      this.datafeed.updateData({
+        bars: [bar],
+        meta: {
+          noData: false
+        },
+      });
+      console.log(bar,'ticker')
+    }
+    
    },
     /**
      * 初始化WebSocket
@@ -107,58 +159,60 @@ export const KlineCharts = {
       this.socketJS = new SockJS(`http://10.10.10.245:20007/websocket?access_token=7b3e23e3-2f4a-4531-8fd0-e4d19faa956f`)
       this.stompClient = stomp.over(this.socketJS,{debug:false})
 
-      this.stompClient.connect({}, () => {
+      this.stompClient.connect({},async () => {
 
         /**
          * 订阅历史数据
          */
-        this.stompClient.subscribe("/topic/batch.kline.1min.btcusdt",async msg => {
-          let body = JSON.parse(msg.body);
-          let context = JSON.parse(body.context);
-          let c = context.data;
+        await this.subHistory()
+        // this.stompClient.subscribe("/topic/batch.kline.1min.btcusdt",msg => {
+        //   let body = JSON.parse(msg.body);
+        //   let context = JSON.parse(body.context);
+        //   let c = context.data;
           
-         this.handleHistory(c)
-         console.log(c)
-          // c.forEach((item, index, array) => {
-          //   m.push([
-          //     new Date(item.timestamp * 1000).toISOString(),
-          //     item.open,
-          //     item.close,
-          //     item.low,
-          //     item.high
-          //   ]);
-          //   console.info(item, '这里是历史数据')
-          // });
-        });
+        //  this.handleHistory(c)
+        //  console.log(c)
+        //   // c.forEach((item, index, array) => {
+        //   //   m.push([
+        //   //     new Date(item.timestamp * 1000).toISOString(),
+        //   //     item.open,
+        //   //     item.close,
+        //   //     item.low,
+        //   //     item.high
+        //   //   ]);
+        //   //   console.info(item, '这里是历史数据')
+        //   // });
+        // });
 
         /**
          * 订阅实时数据
          */
-        this.stompClient.subscribe("/topic/kline.1min.btcusdt", msg => {
-          if (m.length <= 0) {
-            return;
-          }
-          let body = JSON.parse(msg.body);
-          let context = JSON.parse(body.context);
-          let c = context.data;
-          console.info(c, '这里是实时数据')
-          this.handleTicker(c)
-          // if (p === c.timestamp) {
-          //   return;
-          // }
-          // p = c.timestamp;
-          // m.push([
-          //   new Date(c.timestamp * 1000).toISOString(),
-          //   c.open,
-          //   c.close,
-          //   c.low,
-          //   c.high
-          // ]);
-          // if (m.length > 100) {
-          //   m.pop();
-          // }
+        await this.subTicker()
+        // this.stompClient.subscribe("/topic/kline.1min.btcusdt", msg => {
+        //   if (m.length <= 0) {
+        //     return;
+        //   }
+        //   let body = JSON.parse(msg.body);
+        //   let context = JSON.parse(body.context);
+        //   let c = context.data;
+        //   console.info(c, '这里是实时数据')
+        //   this.handleTicker(c)
+        //   // if (p === c.timestamp) {
+        //   //   return;
+        //   // }
+        //   // p = c.timestamp;
+        //   // m.push([
+        //   //   new Date(c.timestamp * 1000).toISOString(),
+        //   //   c.open,
+        //   //   c.close,
+        //   //   c.low,
+        //   //   c.high
+        //   // ]);
+        //   // if (m.length > 100) {
+        //   //   m.pop();
+        //   // }
           
-        })
+        // })
 
       })
 
@@ -177,7 +231,6 @@ export const KlineCharts = {
       };
 
       this.socket.onmessage = (ev) => {
-        console.log(JSON.parse(ev.data))
         this.onSocketMessage(ev.data);
       };
     },
@@ -350,6 +403,8 @@ export const KlineCharts = {
             channel: `market.BTC/USDT.kline.${chartResolution[resolution]}`
           })
         )
+        // this.subHistory()
+        // this.subTicker()
         this.resolution = resolution
       }
       if (this.isLoading && !this.klineData.length) {
