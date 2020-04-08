@@ -7,7 +7,11 @@
 <script>
 import { TradingView, Datafeed } from 'trader-view'
 import { IChartingLibraryWidget, IDatafeed } from 'trader-view'
-import { chartResolution, serverResolution,chartStyle } from '../utils/resolution'
+import {
+  chartResolution,
+  serverResolution,
+  chartStyle
+} from '../utils/resolution'
 import { LibrarySymbolInfo, Bar } from 'trader-view'
 
 import stomp from 'webstomp-client'
@@ -30,38 +34,42 @@ export default {
       isFirstSub: true,
       hasSubHistory: false,
       overrides: {
-          'mainSeriesProperties.style':chartStyle['Area'],
-          'timeScale.rightOffset':5
-      }
+        'mainSeriesProperties.style': chartStyle['Area'],
+        'timeScale.rightOffset': 5
+      },
+      historySub: null,
+      tickerSub: null
     }
   },
   watch: {
-    'resolution':{
-        handler(newVal, oldVal){
-            console.warn('<<<<<<<<<<<<<<<<--分辨率改变了-->>>>>>>>>>>>>>>>',oldVal+'=>'+newVal)
-            if(this.resolution=='1'){
-                this.widget.onChartReady(()=>{
-                    this.widget.applyOverrides({
-                        'mainSeriesProperties.style':chartStyle['Area']
-                    })
-                })
-            }else{
-                this.widget.onChartReady(()=>{
-                    this.widget.applyOverrides({
-                        'mainSeriesProperties.style':chartStyle['Candles']
-                    })
-                })
-            }
-        },
-        deep: true,
-        // immediate: true
-
+    resolution: {
+      handler(newVal, oldVal) {
+        console.warn(
+          '<<<<<<<<<<<<<<<<--分辨率改变了-->>>>>>>>>>>>>>>>',
+          oldVal + '=>' + newVal
+        )
+        if (this.resolution == '1') {
+          this.widget.onChartReady(() => {
+            this.widget.applyOverrides({
+              'mainSeriesProperties.style': chartStyle['Area']
+            })
+          })
+        } else {
+          this.widget.onChartReady(() => {
+            this.widget.applyOverrides({
+              'mainSeriesProperties.style': chartStyle['Candles']
+            })
+          })
+        }
+      },
+      deep: true
+      // immediate: true
     },
-    'klineData': {
+    klineData: {
       handler(newVal, oldVal) {},
       deep: true
     },
-    'isLoading': {
+    isLoading: {
       handler(newVal, oldVal) {
         console.log(newVal)
       },
@@ -85,7 +93,7 @@ export default {
      * 订阅历史消息
      */
     subHistory() {
-      this.stompClient.subscribe(
+      this.historySub = this.stompClient.subscribe(
         `/topic/batch.kline.${chartResolution[this.resolution]}.btcusdt`,
         async msg => {
           let body = JSON.parse(msg.body)
@@ -93,7 +101,7 @@ export default {
           let parseData = context.data
 
           this.handleHistory(parseData)
-          this.hasSubHistory = true
+          
           // c.forEach((item, index, array) => {
           //   m.push([
           //     new Date(item.timestamp * 1000).toISOString(),
@@ -111,7 +119,7 @@ export default {
      *
      * 订阅实时消息
      */ subTicker() {
-      this.stompClient.subscribe(
+      this.tickerSub = this.stompClient.subscribe(
         `/topic/kline.${chartResolution[this.resolution]}.btcusdt`,
         async msg => {
           let body = JSON.parse(msg.body)
@@ -119,7 +127,6 @@ export default {
           let parseData = context.data
           console.log(parseData)
           this.handleTicker(parseData)
-          this.hasSubHistory = false
           // if (p === c.timestamp) {
           //   return;
           // }
@@ -162,6 +169,7 @@ export default {
 
       this.klineData = list
       this.isLoading = true
+      this.hasSubHistory = true
       console.log(this.klineData, '历史数据')
     },
     /**
@@ -371,7 +379,7 @@ export default {
             params.resolution,
             params.from,
             params.to,
-            this.isFirstSub
+            this.hasSubHistory
           ).then(d => d)
         },
         config: () => this.defaultConfig(),
@@ -411,17 +419,17 @@ export default {
           //   'adaptive_logo',//移动端图标
           'property_pages',
           'header_widget_dom_node', //顶部工具栏DOM节点
-          
+
           'header_compare', //比较btn
           'header_settings', //设置btn
           'header_fullscreen_button', //全屏btn
           'header_saveload', //保存&读取btn
-          
+
           'header_screenshot', //截屏btn
           'header_chart_type', //图表类型btn
           'header_undo_redo', //撤销&取消btn
           'header_interval_dialog_button', //不知道是啥
-          
+
           'timeframes_toolbar', //底部事件工具栏
           'symbol_search_hot_key', //搜索热键
           //   'volume_force_overlay',
@@ -433,9 +441,9 @@ export default {
           //   'study_templates'
         ],
         enabled_features: [
-            'header_widget', //顶部工具栏
-            'header_resolutions', //分辨率
-            'header_indicators', //指标btn
+          'header_widget', //顶部工具栏
+          'header_resolutions', //分辨率
+          'header_indicators' //指标btn
         ],
         charts_storage_url: 'http://saveload.tradingview.com',
         charts_storage_api_version: '1.1',
@@ -453,26 +461,15 @@ export default {
      */
     async getBars(symbol, resolution, from, to, isFirst) {
       console.log('----isFirst----', isFirst)
-      if (this.resolution !== resolution && this.socket) {
-        // this.socket.send(
-        //   JSON.stringify({
-        //     event: 'removeChannel',
-        //     channel: `market.BTC/USDT.kline.${chartResolution[this.resolution]}`
-        //   })
-        // )
-        // this.socket.send(
-        //   JSON.stringify({
-        //     event: 'addChannel',
-        //     channel: `market.BTC/USDT.kline.${chartResolution[resolution]}`
-        //   })
-        // )
+      if (this.resolution !== resolution && this.socketJS) {
         console.log('切换分辨率', resolution)
-
-        this.isFirstSub = false
+        
         this.resolution = resolution
         this.subHistory()
-        console.warn('已获取历史数据')
-        this.subTicker()
+        if(this.hasSubHistory){
+            this.subTicker()
+        }
+        
       }
       /**
        *
