@@ -1,29 +1,17 @@
 <template>
   <div id="tv_chart_container" style="width:100%;height:400px;">
-      <div class="mask"></div>
+    <div class="mask"></div>
   </div>
 </template>
 
 <script>
-import {
-  TradingView,
-  Datafeed
-} from "trader-view";
-import {
-  IChartingLibraryWidget,
-  IDatafeed
-} from "trader-view";
-import {
-  chartResolution,
-  serverResolution
-} from "../utils/resolution";
-import {
-  LibrarySymbolInfo,
-  Bar
-} from 'trader-view'
+import { TradingView, Datafeed } from 'trader-view'
+import { IChartingLibraryWidget, IDatafeed } from 'trader-view'
+import { chartResolution, serverResolution,chartStyle } from '../utils/resolution'
+import { LibrarySymbolInfo, Bar } from 'trader-view'
 
-import stomp from "webstomp-client";
-import SockJS from "sockjs-client";
+import stomp from 'webstomp-client'
+import SockJS from 'sockjs-client'
 
 export default {
   data() {
@@ -40,10 +28,35 @@ export default {
       tickerTimestamp: 0,
       historyTimestamp: 0,
       isFirstSub: true,
-      hasSubHistory: false
+      hasSubHistory: false,
+      overrides: {
+          'mainSeriesProperties.style':chartStyle['Area'],
+          'timeScale.rightOffset':5
+      }
     }
   },
   watch: {
+    'resolution':{
+        handler(newVal, oldVal){
+            console.warn('<<<<<<<<<<<<<<<<--分辨率改变了-->>>>>>>>>>>>>>>>',oldVal+'=>'+newVal)
+            if(this.resolution=='1'){
+                this.widget.onChartReady(()=>{
+                    this.widget.applyOverrides({
+                        'mainSeriesProperties.style':chartStyle['Area']
+                    })
+                })
+            }else{
+                this.widget.onChartReady(()=>{
+                    this.widget.applyOverrides({
+                        'mainSeriesProperties.style':chartStyle['Candles']
+                    })
+                })
+            }
+        },
+        deep: true,
+        // immediate: true
+
+    },
     'klineData': {
       handler(newVal, oldVal) {},
       deep: true
@@ -58,145 +71,153 @@ export default {
   },
   methods: {
     /**
-     * 
-     * 订阅历史消息 
+     * widgetReady钩子
      */
-    subHistory(){
-      this.stompClient.subscribe(`/topic/batch.kline.${chartResolution[this.resolution]}.btcusdt`,async msg => {
-        let body = JSON.parse(msg.body);
-        let context = JSON.parse(body.context);
-        let parseData = context.data;
-        
-        this.handleHistory(parseData)
-        this.hasSubHistory = true
-        // c.forEach((item, index, array) => {
-        //   m.push([
-        //     new Date(item.timestamp * 1000).toISOString(),
-        //     item.open,
-        //     item.close,
-        //     item.low,
-        //     item.high
-        //   ]);
-        //   console.info(item, '这里是历史数据')
-        // });
-      });
-    }
+    watchWidget(func) {
+      if (this.widget) {
+        this.widget.onChartReady(() => {
+          this.widget.applyOverrides(this.overrides)
+        })
+      }
+    },
     /**
-     * 
-     * 订阅实时消息
-     */,
-    subTicker(){
-      this.stompClient.subscribe(`/topic/kline.${chartResolution[this.resolution]}.btcusdt`,async msg => {
+     *
+     * 订阅历史消息
+     */
+    subHistory() {
+      this.stompClient.subscribe(
+        `/topic/batch.kline.${chartResolution[this.resolution]}.btcusdt`,
+        async msg => {
+          let body = JSON.parse(msg.body)
+          let context = JSON.parse(body.context)
+          let parseData = context.data
 
-        let body = JSON.parse(msg.body)
-        let context = JSON.parse(body.context)
-        let parseData = context.data
-        console.log(parseData)
-        this.handleTicker(parseData)
-        this.hasSubHistory = false
-        // if (p === c.timestamp) {
-        //   return;
-        // }
-        // p = c.timestamp;
-        // m.push([
-        //   new Date(c.timestamp * 1000).toISOString(),
-        //   c.open,
-        //   c.close,
-        //   c.low,
-        //   c.high
-        // ]);
-        // if (m.length > 100) {
-        //   m.pop();
-        // }
-        
-      })
-      
+          this.handleHistory(parseData)
+          this.hasSubHistory = true
+          // c.forEach((item, index, array) => {
+          //   m.push([
+          //     new Date(item.timestamp * 1000).toISOString(),
+          //     item.open,
+          //     item.close,
+          //     item.low,
+          //     item.high
+          //   ]);
+          //   console.info(item, '这里是历史数据')
+          // });
+        }
+      )
+    },
+    /**
+     *
+     * 订阅实时消息
+     */ subTicker() {
+      this.stompClient.subscribe(
+        `/topic/kline.${chartResolution[this.resolution]}.btcusdt`,
+        async msg => {
+          let body = JSON.parse(msg.body)
+          let context = JSON.parse(body.context)
+          let parseData = context.data
+          console.log(parseData)
+          this.handleTicker(parseData)
+          this.hasSubHistory = false
+          // if (p === c.timestamp) {
+          //   return;
+          // }
+          // p = c.timestamp;
+          // m.push([
+          //   new Date(c.timestamp * 1000).toISOString(),
+          //   c.open,
+          //   c.close,
+          //   c.low,
+          //   c.high
+          // ]);
+          // if (m.length > 100) {
+          //   m.pop();
+          // }
+        }
+      )
     },
     /**
      * 处理历史数据
-    */
-   handleHistory(data){
-    const list = [];
-    const is1D = this.resolution === "D";
-    
-    for (let i = 0; i < data.length; i++) {
-      if(this.historyTimestamp!=data[i].timestamp){
-        this.historyTimestamp = data[i].timestamp
-        list.push({
-          time: is1D ? data[i].id*1000 + 86400000 : data[i].id*1000,
-          open: data[i].open,
-          high: data[i].high,
-          low: data[i].low,
-          close: data[i].close,
-          volume: data[i].amount,
-        });
+     */
+    handleHistory(data) {
+      const list = []
+      const is1D = this.resolution === 'D'
 
+      for (let i = 0; i < data.length; i++) {
+        if (this.historyTimestamp != data[i].timestamp) {
+          this.historyTimestamp = data[i].timestamp
+          list.push({
+            time: is1D ? data[i].id * 1000 + 86400000 : data[i].id * 1000,
+            open: data[i].open,
+            high: data[i].high,
+            low: data[i].low,
+            close: data[i].close,
+            volume: data[i].amount
+          })
+        }
       }
-      
-    }
-    
-    list.sort((a, b) => a.time - b.time);
-    
-    this.klineData = list;
-    this.isLoading = true
-    console.log(this.klineData, '历史数据')
-   },
-   /**
-    * 处理实时数据
-    */
-   handleTicker(data){
 
-    const is1D = this.resolution === "D";
-    const bar = {
-      time: is1D ? data.id*1000 + 86400000 : data.id*1000,
-      open: data.open,
-      high: data.high,
-      low: data.low,
-      close: data.close,
-      volume: data.amount,
-    };
-    if (!this.datafeed) {
-      return;
-    }
-    // if(this.tickerTimestamp!=data.timestamp){
+      list.sort((a, b) => a.time - b.time)
+
+      this.klineData = list
+      this.isLoading = true
+      console.log(this.klineData, '历史数据')
+    },
+    /**
+     * 处理实时数据
+     */
+    handleTicker(data) {
+      const is1D = this.resolution === 'D'
+      const bar = {
+        time: is1D ? data.id * 1000 + 86400000 : data.id * 1000,
+        open: data.open,
+        high: data.high,
+        low: data.low,
+        close: data.close,
+        volume: data.amount
+      }
+      if (!this.datafeed) {
+        return
+      }
+      // if(this.tickerTimestamp!=data.timestamp){
       this.tickerTimestamp = data.timestamp
       this.datafeed.updateData({
         bars: [bar],
         meta: {
           noData: false
-        },
-      });
-      console.log(bar,'ticker')
-    // }
-    
-   },
+        }
+      })
+      console.log(bar, 'ticker')
+      // }
+    },
     /**
      * 初始化WebSocket
      */
-   initSockJs() {
-      this.socketJS = new SockJS(`http://10.10.10.245:20007/websocket?access_token=7b3e23e3-2f4a-4531-8fd0-e4d19faa956f`)
-      this.stompClient = stomp.over(this.socketJS,{debug:false})
+    initSockJs() {
+      this.socketJS = new SockJS(
+        `http://10.10.10.245:20007/websocket?access_token=8c3b8898-bb27-4d19-92ff-8a564a151f42`
+      )
+      this.stompClient = stomp.over(this.socketJS, { debug: false })
 
-      this.stompClient.connect({},() => {
-        const ps = new Promise((resolve,reject)=>{
+      this.stompClient.connect({}, () => {
+        const ps = new Promise((resolve, reject) => {
           this.subHistory()
           resolve()
         })
 
-
-        ps.then(()=>{
+        ps.then(() => {
           this.subTicker()
         })
         /**
          * 订阅历史数据
          */
 
-        
         // this.stompClient.subscribe("/topic/batch.kline.1min.btcusdt",msg => {
         //   let body = JSON.parse(msg.body);
         //   let context = JSON.parse(body.context);
         //   let c = context.data;
-          
+
         //  this.handleHistory(c)
         //  console.log(c)
         //   // c.forEach((item, index, array) => {
@@ -214,7 +235,7 @@ export default {
         /**
          * 订阅实时数据
          */
-        
+
         // this.stompClient.subscribe("/topic/kline.1min.btcusdt", msg => {
         //   if (m.length <= 0) {
         //     return;
@@ -238,32 +259,29 @@ export default {
         //   // if (m.length > 100) {
         //   //   m.pop();
         //   // }
-          
+
         // })
-
       })
-
     },
     initWebSocket() {
-
-      this.socket = new WebSocket("wss://www.btb.io/websocket/api");
+      this.socket = new WebSocket('wss://www.btb.io/websocket/api')
 
       this.socket.onopen = () => {
-        if (!this.socket) return;
+        if (!this.socket) return
         const data = {
-          event: "addChannel",
-          channel: `market.BTC/USDT.kline.${chartResolution[this.resolution]}`,
-        };
-        this.socket.send(JSON.stringify(data));
-      };
+          event: 'addChannel',
+          channel: `market.BTC/USDT.kline.${chartResolution[this.resolution]}`
+        }
+        this.socket.send(JSON.stringify(data))
+      }
 
-      this.socket.onmessage = (ev) => {
-        this.onSocketMessage(ev.data);
-      };
+      this.socket.onmessage = ev => {
+        this.onSocketMessage(ev.data)
+      }
     },
     /**
      * 监听WebSocket响应
-     * 
+     *
      */
     onSocketMessage(msg) {
       try {
@@ -284,8 +302,8 @@ export default {
      * 处理历史数据
      */
     forEachHistoryData(data) {
-      const list = [];
-      const is1D = this.resolution === "D";
+      const list = []
+      const is1D = this.resolution === 'D'
       for (let i = 0; i < data.length; i++) {
         list.push({
           time: is1D ? data[i].time + 86400000 : data[i].time,
@@ -293,53 +311,53 @@ export default {
           high: data[i].hight,
           low: data[i].low,
           close: data[i].close,
-          volume: data[i].amount,
-        });
+          volume: data[i].amount
+        })
       }
-      list.sort((a, b) => a.time - b.time);
-      this.klineData = list;
-      this.isLoading = true;
+      list.sort((a, b) => a.time - b.time)
+      this.klineData = list
+      this.isLoading = true
     },
     /**
      * 处理实时数据
      */
     onTickerData(data) {
-      const is1D = this.resolution === "D";
+      const is1D = this.resolution === 'D'
       const bar = {
         time: is1D ? data.time + 86400000 : data.time,
         open: data.open,
         high: data.hight,
         low: data.low,
         close: data.close,
-        volume: data.amount,
-      };
+        volume: data.amount
+      }
       if (!this.datafeed) {
-        return;
+        return
       }
       this.datafeed.updateData({
         bars: [bar],
         meta: {
           noData: false
-        },
-      });
+        }
+      })
     },
     /**
      * 异步延迟等待
      */
     delayAwait() {
       return new Promise((resolve, reject) => {
-        this.awaitCount++;
-        console.log(`>> Await count:: ${this.awaitCount * 300}ms`);
+        this.awaitCount++
+        console.log(`>> Await count:: ${this.awaitCount * 300}ms`)
         if (this.isLoading) {
-          return resolve(this.klineData);
+          return resolve(this.klineData)
         } else {
-          return this.awaitCount < 100 ? reject() : resolve();
+          return this.awaitCount < 100 ? reject() : resolve()
         }
       }).catch(() => {
-        return new Promise((resolve) => {
-          setTimeout(resolve, 300);
-        }).then(() => this.delayAwait());
-      });
+        return new Promise(resolve => {
+          setTimeout(resolve, 300)
+        }).then(() => this.delayAwait())
+      })
     },
 
     /**
@@ -347,78 +365,88 @@ export default {
      */
     initDatafeed() {
       this.datafeed = new Datafeed({
-        history: (params) => {
+        history: params => {
           return this.getBars(
             params.symbol,
             params.resolution,
             params.from,
             params.to,
             this.isFirstSub
-          ).then((d) => d);
+          ).then(d => d)
         },
         config: () => this.defaultConfig(),
         symbols: () => this.defaultSymbol(),
-        time: () => new Promise((resolve) => resolve(Date.now())),
+        time: () => new Promise(resolve => resolve(Date.now()))
         // quotes: () => new Promise(resolve => resolve({s: 'error', errmsg: 'error'}))
-      });
+      })
     },
     /**
      * 初始化tradingview
      */
     initTradingView() {
       if (!this.datafeed) {
-        return;
+        return
       }
       this.widget = new TradingView({
         // debug: true, // uncomment this line to see Library errors and warnings in the console
         fullscreen: false,
         autosize: true,
-        symbol: "BTC/USDT",
+        symbol: 'BTC/USDT',
         interval: this.resolution,
-        container_id: "tv_chart_container",
+        container_id: 'tv_chart_container',
 
         //	BEWARE: no trailing slash is expected in feed URL
         datafeed: this.datafeed,
-        library_path: "/charting_library/",
-        locale: "zh",
+        library_path: '/charting_library/',
+        locale: 'zh',
 
-        // overrides: {
-        //     "mainSeriesProperties.style": 0
-        // },
+        overrides: {
+          'mainSeriesProperties.style': 1
+        },
 
         disabled_features: [
           'use_localstorage_for_settings',
-          'left_toolbar',
+          'left_toolbar', //左侧工具栏
           'header_symbol_search',
-          'header_widget_dom_node',//顶部工具栏自定义节点
-          'header_widget',//顶部工具栏
-          'header_compare',//比较btn
-          'header_settings',//设置btn
-          'header_fullscreen_button',//全屏btn
-          'header_saveload',//保存&读取btn
-          'header_indicators', //指标btn
-          'header_screenshot',//截屏btn
-          'header_chart_type',//图表类型btn
-          'header_undo_redo',//撤销&取消btn
-          'header_interval_dialog_button',//不知道是啥
-          'header_resolutions',//时间切换
-          'timeframes_toolbar',//底部事件工具栏
-        //   'volume_force_overlay',
+          //   'adaptive_logo',//移动端图标
+          'property_pages',
+          'header_widget_dom_node', //顶部工具栏DOM节点
+          
+          'header_compare', //比较btn
+          'header_settings', //设置btn
+          'header_fullscreen_button', //全屏btn
+          'header_saveload', //保存&读取btn
+          
+          'header_screenshot', //截屏btn
+          'header_chart_type', //图表类型btn
+          'header_undo_redo', //撤销&取消btn
+          'header_interval_dialog_button', //不知道是啥
+          
+          'timeframes_toolbar', //底部事件工具栏
+          'symbol_search_hot_key', //搜索热键
+          //   'volume_force_overlay',
           'pane_context_menu',
           'timezone_menu',
           'symbol_info',
           'chart_markup_table',
-          'control_bar',
+          'control_bar'
+          //   'study_templates'
         ],
-        enabled_features: ["study_templates"],
-        charts_storage_url: "http://saveload.tradingview.com",
-        charts_storage_api_version: "1.1",
-        client_id: "tradingview.com",
-        user_id: "public_user_id",
+        enabled_features: [
+            'header_widget', //顶部工具栏
+            'header_resolutions', //分辨率
+            'header_indicators', //指标btn
+        ],
+        charts_storage_url: 'http://saveload.tradingview.com',
+        charts_storage_api_version: '1.1',
+        client_id: 'tradingview.com',
+        user_id: 'public_user_id',
         // debug: true,
-        theme: "Dark",
-        timezone: "Asia/Shanghai",
-      });
+        theme: 'Dark',
+        timezone: 'Asia/Shanghai'
+      })
+
+      this.watchWidget()
     },
     /**
      * 获取块
@@ -438,15 +466,16 @@ export default {
         //     channel: `market.BTC/USDT.kline.${chartResolution[resolution]}`
         //   })
         // )
-        console.log('切换分辨率',resolution)
-        
+        console.log('切换分辨率', resolution)
+
         this.isFirstSub = false
         this.resolution = resolution
-        await this.subHistory()
-        await this.subTicker()
+        this.subHistory()
+        console.warn('已获取历史数据')
+        this.subTicker()
       }
       /**
-       * 
+       *
        */
       console.log(this.klineData.length)
       // if (this.isLoading && !this.klineData.length) {
@@ -578,11 +607,9 @@ export default {
     }
   },
   created() {
-    
     this.initDatafeed()
     // this.initWebSocket()
     this.initSockJs()
-    
   },
   mounted() {
     window.addEventListener(
@@ -595,5 +622,4 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-
 </style>

@@ -19,3 +19,16 @@ export const serverResolution = {
     '1week': '1W',
     '1mon': '1M'
 }
+
+export const chartStyle = {
+    'Bars': 0,//美国线
+    'Candles':1,//K线图
+    'Line': 2,//线形图
+    'Area':3,//面积图
+    'Heiken Ashi': 8,//平均k线图
+    'Hollow Candles': 9,//空心K线图
+    'Renko': 4,//'转形图
+    'Kagi': 5,//卡吉图
+    'Point&Figure': 6,//点数图
+    'Line Break': 7,//新价图
+}
