@@ -131,7 +131,7 @@ export default {
         if (this.historyTimestamp != data[i].timestamp) {
           this.historyTimestamp = data[i].timestamp
           list.push({
-            time: is1D ? data[i].id * 1000 + 86400000 : data[i].id * 1000,
+            time: data[i].id * 1000,
             open: data[i].open,
             high: data[i].high,
             low: data[i].low,
@@ -150,12 +150,17 @@ export default {
     //       noData: false
     //     }
     //   })
-
+      this.datafeed.updateData({
+        bars: list,
+        meta: {
+          noData: true
+        }
+      })
       this.klineData = list
       this.isLoading = true
       this.hasSubHistory = true
       
-      console.log(this.klineData, '历史数据')
+      // console.log(this.klineData, '历史数据')
     },
     /**
      * 处理实时数据
@@ -163,7 +168,7 @@ export default {
     handleTicker(data) {
       const is1D = this.resolution === 'D'
       const bar = {
-        time: is1D ? data.id * 1000 + 86400000 : data.id * 1000,
+        time: data.id * 1000,
         open: data.open,
         high: data.high,
         low: data.low,
@@ -180,7 +185,7 @@ export default {
           noData: false
         }
       })
-      console.log(bar, 'ticker')
+      // console.log(bar, 'ticker')
       // }
     },
     /**
@@ -256,7 +261,13 @@ export default {
         })
       }
       list.sort((a, b) => a.time - b.time)
-      this.klineData = list
+      // this.$nextTick(()=>{
+      //   this.klineData = list
+      // })
+
+
+      this.$set(this.klineData,list)
+      
       this.isLoading = true
     },
     /**
@@ -370,13 +381,14 @@ export default {
           'timezone_menu',
           'symbol_info',
           'chart_markup_table',
-          'control_bar'
+          'control_bar',
+          'header_indicators' //指标btn
           //   'study_templates'
         ],
         enabled_features: [
           'header_widget', //顶部工具栏
           'header_resolutions', //分辨率
-          'header_indicators' //指标btn
+          
         ],
         charts_storage_url: 'http://saveload.tradingview.com',
         charts_storage_api_version: '1.1',
@@ -419,10 +431,10 @@ export default {
       /**
        *
        */
-      console.warn(this.klineData.length,'数据长度')
-      // if (this.isLoading && !this.klineData.length) {
-      //   this.isLoading = false
-      // }
+
+      if (this.isLoading && !this.klineData.length) {
+        this.isLoading = false
+      }
       const data = await this.delayAwait()
       this.klineData = []
       this.awaitCount = 0
@@ -487,7 +499,9 @@ export default {
           /**
            * An array of resolutions which should be enabled in resolutions picker for this symbol.
            */
-          supported_resolutions: ['1', '5', '15', '30', '60', 'D', '1W', '1M']
+          supported_resolutions: ['1', '5', '15', '30', '60', 'D'
+          /*, '1W', '1M'*/
+          ]
           /**
            * @example (for ex.: "1,5,60") - only these resolutions will be requested, all others will be built using them if possible
            */
