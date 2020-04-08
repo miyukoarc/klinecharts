@@ -1,19 +1,24 @@
 <template>
   <div id="app">
-    <div id="tv_chart_container">
-    </div>
+    <!-- <div id="tv_chart_container">
+    </div> -->
+    <kline-chart/>
   </div>
 </template>
 
 <script>
-import {KlineCharts} from './views/Kline'
+import {KlineCharts} from './views/Kline.js'
+import KlineChart from './views/Kline.vue'
 export default {
+  components: {
+    KlineChart
+  },
   data(){
     return{}
   },
   mounted(){
   },
-  mixins: [KlineCharts]
+  // mixins: [KlineCharts]
 }
 </script>
 
