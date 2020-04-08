@@ -31,7 +31,6 @@ export default {
       stompClient: null,
       tickerTimestamp: 0,
       historyTimestamp: 0,
-      isFirstSub: true,
       hasSubHistory: false,
       overrides: {
         'mainSeriesProperties.style': chartStyle['Area'],
@@ -92,9 +91,9 @@ export default {
      *
      * 订阅历史消息
      */
-    subHistory() {
+    subHistory(resolution) {
       this.historySub = this.stompClient.subscribe(
-        `/topic/batch.kline.${chartResolution[this.resolution]}.btcusdt`,
+        `/topic/batch.kline.${chartResolution[resolution]}.btcusdt`,
         async msg => {
           let body = JSON.parse(msg.body)
           let context = JSON.parse(body.context)
@@ -102,45 +101,22 @@ export default {
 
           this.handleHistory(parseData)
           
-          // c.forEach((item, index, array) => {
-          //   m.push([
-          //     new Date(item.timestamp * 1000).toISOString(),
-          //     item.open,
-          //     item.close,
-          //     item.low,
-          //     item.high
-          //   ]);
-          //   console.info(item, '这里是历史数据')
-          // });
         }
       )
     },
     /**
      *
      * 订阅实时消息
-     */ subTicker() {
+     */ subTicker(resolution) {
       this.tickerSub = this.stompClient.subscribe(
-        `/topic/kline.${chartResolution[this.resolution]}.btcusdt`,
+        `/topic/kline.${chartResolution[resolution]}.btcusdt`,
         async msg => {
           let body = JSON.parse(msg.body)
           let context = JSON.parse(body.context)
           let parseData = context.data
           console.log(parseData)
           this.handleTicker(parseData)
-          // if (p === c.timestamp) {
-          //   return;
-          // }
-          // p = c.timestamp;
-          // m.push([
-          //   new Date(c.timestamp * 1000).toISOString(),
-          //   c.open,
-          //   c.close,
-          //   c.low,
-          //   c.high
-          // ]);
-          // if (m.length > 100) {
-          //   m.pop();
-          // }
+
         }
       )
     },
@@ -167,9 +143,18 @@ export default {
 
       list.sort((a, b) => a.time - b.time)
 
+      console.log(this.datafeed)
+    //   this.datafeed.updateData({
+    //     bars: list,
+    //     meta: {
+    //       noData: false
+    //     }
+    //   })
+
       this.klineData = list
       this.isLoading = true
       this.hasSubHistory = true
+      
       console.log(this.klineData, '历史数据')
     },
     /**
@@ -189,7 +174,6 @@ export default {
         return
       }
       // if(this.tickerTimestamp!=data.timestamp){
-      this.tickerTimestamp = data.timestamp
       this.datafeed.updateData({
         bars: [bar],
         meta: {
@@ -210,65 +194,14 @@ export default {
 
       this.stompClient.connect({}, () => {
         const ps = new Promise((resolve, reject) => {
-          this.subHistory()
+          this.subHistory(this.resolution)
           resolve()
         })
 
         ps.then(() => {
-          this.subTicker()
+          this.subTicker(this.resolution)
         })
-        /**
-         * 订阅历史数据
-         */
 
-        // this.stompClient.subscribe("/topic/batch.kline.1min.btcusdt",msg => {
-        //   let body = JSON.parse(msg.body);
-        //   let context = JSON.parse(body.context);
-        //   let c = context.data;
-
-        //  this.handleHistory(c)
-        //  console.log(c)
-        //   // c.forEach((item, index, array) => {
-        //   //   m.push([
-        //   //     new Date(item.timestamp * 1000).toISOString(),
-        //   //     item.open,
-        //   //     item.close,
-        //   //     item.low,
-        //   //     item.high
-        //   //   ]);
-        //   //   console.info(item, '这里是历史数据')
-        //   // });
-        // });
-
-        /**
-         * 订阅实时数据
-         */
-
-        // this.stompClient.subscribe("/topic/kline.1min.btcusdt", msg => {
-        //   if (m.length <= 0) {
-        //     return;
-        //   }
-        //   let body = JSON.parse(msg.body);
-        //   let context = JSON.parse(body.context);
-        //   let c = context.data;
-        //   console.info(c, '这里是实时数据')
-        //   this.handleTicker(c)
-        //   // if (p === c.timestamp) {
-        //   //   return;
-        //   // }
-        //   // p = c.timestamp;
-        //   // m.push([
-        //   //   new Date(c.timestamp * 1000).toISOString(),
-        //   //   c.open,
-        //   //   c.close,
-        //   //   c.low,
-        //   //   c.high
-        //   // ]);
-        //   // if (m.length > 100) {
-        //   //   m.pop();
-        //   // }
-
-        // })
       })
     },
     initWebSocket() {
@@ -463,18 +396,30 @@ export default {
       console.log('----isFirst----', isFirst)
       if (this.resolution !== resolution && this.socketJS) {
         console.log('切换分辨率', resolution)
+
+        
+        
         
         this.resolution = resolution
-        this.subHistory()
-        if(this.hasSubHistory){
-            this.subTicker()
-        }
+
+        const ps = new Promise((resolve,reject)=>{
+            this.tickerSub.unsubscribe()
+            this.subTicker(resolution)
+            
+            resolve()
+        })
+
+        ps.then(()=>{
+            this.subHistory(resolution)
+            
+        })
+        
         
       }
       /**
        *
        */
-      console.log(this.klineData.length)
+      console.warn(this.klineData.length,'数据长度')
       // if (this.isLoading && !this.klineData.length) {
       //   this.isLoading = false
       // }
