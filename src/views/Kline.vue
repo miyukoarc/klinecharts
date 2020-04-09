@@ -228,7 +228,7 @@ export default {
             params.resolution,
             params.from,
             params.to,
-            this.hasSubHistory
+            params.firstDataRequest
           ).then(d => d)
         },
         config: () => this.defaultConfig(),
@@ -287,7 +287,7 @@ export default {
           'symbol_info',
           'chart_markup_table',
           'control_bar',
-          // 'header_indicators' ,//指标btn
+          'header_indicators' ,//指标btn
           //   'study_templates'
           'create_volume_indicator_by_default',//默认指标交易量
         ],
@@ -301,7 +301,7 @@ export default {
         client_id: 'tradingview.com',
         user_id: 'public_user_id',
         // debug: true,
-        theme: 'Dark',
+        theme: 'Light',
         timezone: 'Asia/Shanghai'
       })
 
