@@ -1,6 +1,11 @@
 <template>
-  <div id="tv_chart_container" style="width:100%;height:400px;">
-    <div class="mask"></div>
+  <div class="view-container">
+    <div class="mask">
+
+    </div>
+    <div id="tv_chart_container" style="width:100%;height:400px;">
+      
+    </div>
   </div>
 </template>
 
@@ -76,13 +81,85 @@ export default {
     }
   },
   methods: {
+    initWidgetBtn (){
+      if(this.widget){
+        this.widget.headerReady().then(()=> {
+
+
+            const btnMA5 = this.widget.createButton()
+            btnMA5.setAttribute('title', 'My custom button tooltip')
+            btnMA5.addEventListener('click', ()=>{
+              this.watchWidget(this.initMA5)
+            })
+            btnMA5.textContent = 'MA 5'
+
+            const btnMA10 = this.widget.createButton()
+            btnMA10.setAttribute('title', 'My custom button tooltip')
+            btnMA10.addEventListener('click', ()=>{
+              this.watchWidget(this.initMA10)
+            })
+            btnMA10.textContent = 'MA10'
+
+
+            const btnBOLL = this.widget.createButton()
+            btnBOLL.setAttribute('title', 'My custom button tooltip')
+            btnBOLL.addEventListener('click', ()=>{
+              this.watchWidget(this.initBoll)
+            })
+            btnBOLL.textContent = 'BOLL'
+
+            const btnKDJ = this.widget.createButton()
+            btnKDJ.setAttribute('title', 'My custom button tooltip')
+            btnKDJ.addEventListener('click', ()=>{
+              this.watchWidget(this.initKDJ)
+            })
+            btnKDJ.textContent = 'KDJ'
+
+            const btnRSI = this.widget.createButton()
+            btnRSI.setAttribute('title', 'My custom button tooltip')
+            btnRSI.addEventListener('click', ()=>{
+              this.watchWidget(this.initRSI)
+            })
+            btnRSI.textContent = 'RSI'
+
+            const btnWR = this.widget.createButton()
+            btnWR.setAttribute('title', 'My custom button tooltip')
+            btnWR.addEventListener('click', ()=>{
+              this.watchWidget(this.initRSI)
+            })
+            btnWR.textContent = 'WR'
+         });
+      }
+      
+    },
+    initMA5(){
+      this.widget.chart().createStudy('Moving Average', false, false, [5], {'Plot.linewidth': 4,})
+    },
+    initMA10(){
+      this.widget.chart().createStudy('Moving Average', false, false, [10], {'Plot.linewidth': 4,})
+    },
+    initBoll(){
+      this.widget.chart().createStudy('Bollinger Bands %B', true, false, [20,2])
+    },
+    initKDJ(){
+      this.widget.chart().createStudy('Stochastic', true, false, [14,1,3])
+    },
+    initRSI(){
+      this.widget.chart().createStudy('Relative Strength Index', true, false, [14])
+    },
+    initWR(){
+      this.widget.chart().createStudy('Williams %R', true, false, [14])
+    },
+    initWidgetOption(){
+      this.widget.applyOverrides(this.overrides)
+    },
     /**
      * widgetReady钩子
      */
-    watchWidget(func) {
+    watchWidget(func,val) {
       if (this.widget) {
         this.widget.onChartReady(() => {
-          this.widget.applyOverrides(this.overrides)
+          func(val)
         })
       }
     },
@@ -265,8 +342,8 @@ export default {
           'use_localstorage_for_settings',
           'left_toolbar', //左侧工具栏
           'header_symbol_search',
-          //   'adaptive_logo',//移动端图标
-          'property_pages',
+            'adaptive_logo',//移动端图标
+          'property_pages',//指标设置
           'header_widget_dom_node', //顶部工具栏DOM节点
 
           'header_compare', //比较btn
@@ -281,15 +358,15 @@ export default {
 
           'timeframes_toolbar', //底部事件工具栏
           'symbol_search_hot_key', //搜索热键
-          //   'volume_force_overlay',
+            // 'volume_force_overlay',//买卖数量和主界面重叠
           'pane_context_menu',
           'timezone_menu',
-          'symbol_info',
-          'chart_markup_table',
-          'control_bar',
+          // 'symbol_info',
+          // 'chart_markup_table',
+          // 'control_bar',
           'header_indicators' ,//指标btn
           //   'study_templates'
-          'create_volume_indicator_by_default',//默认指标交易量
+          // 'create_volume_indicator_by_default',//默认指标交易量
         ],
         enabled_features: [
           'header_widget', //顶部工具栏
@@ -305,7 +382,9 @@ export default {
         timezone: 'Asia/Shanghai'
       })
 
-      this.watchWidget()
+      this.initWidgetBtn()
+
+      this.watchWidget(this.initWidgetOption)
     },
     /**
      * 获取块
@@ -355,6 +434,7 @@ export default {
       }
 
       if(isFirst){
+        console.warn(data)
         this.klineData = []
         this.awaitCount = 0
         return {
