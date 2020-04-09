@@ -34,7 +34,6 @@ export default {
       hasSubHistory: false,
       overrides: {
         'mainSeriesProperties.style': chartStyle['Area'],
-        'timeScale.rightOffset': 5
       },
       historySub: null,
       tickerSub: null
@@ -209,90 +208,6 @@ export default {
 
       })
     },
-    initWebSocket() {
-      this.socket = new WebSocket('wss://www.btb.io/websocket/api')
-
-      this.socket.onopen = () => {
-        if (!this.socket) return
-        const data = {
-          event: 'addChannel',
-          channel: `market.BTC/USDT.kline.${chartResolution[this.resolution]}`
-        }
-        this.socket.send(JSON.stringify(data))
-      }
-
-      this.socket.onmessage = ev => {
-        this.onSocketMessage(ev.data)
-      }
-    },
-    /**
-     * 监听WebSocket响应
-     *
-     */
-    onSocketMessage(msg) {
-      try {
-        const _msg = JSON.parse(msg)
-        const c = `market.BTC/USDT.kline.${chartResolution[this.resolution]}`
-        // console.log(!!_msg,!!_msg.data,!this.isLoading , _msg.channel==c)
-        if (_msg && _msg.data && !this.isLoading && _msg.channel === c) {
-          this.forEachHistoryData(_msg.data)
-        }
-        if (_msg && _msg.ticker && this.isLoading && _msg.channel === c) {
-          this.onTickerData(_msg.ticker)
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    },
-    /**
-     * 处理历史数据
-     */
-    forEachHistoryData(data) {
-      const list = []
-      const is1D = this.resolution === 'D'
-      for (let i = 0; i < data.length; i++) {
-        list.push({
-          time: is1D ? data[i].time + 86400000 : data[i].time,
-          open: data[i].open,
-          high: data[i].hight,
-          low: data[i].low,
-          close: data[i].close,
-          volume: data[i].amount
-        })
-      }
-      list.sort((a, b) => a.time - b.time)
-      // this.$nextTick(()=>{
-      //   this.klineData = list
-      // })
-
-
-      this.$set(this.klineData,list)
-      
-      this.isLoading = true
-    },
-    /**
-     * 处理实时数据
-     */
-    onTickerData(data) {
-      const is1D = this.resolution === 'D'
-      const bar = {
-        time: is1D ? data.time + 86400000 : data.time,
-        open: data.open,
-        high: data.hight,
-        low: data.low,
-        close: data.close,
-        volume: data.amount
-      }
-      if (!this.datafeed) {
-        return
-      }
-      this.datafeed.updateData({
-        bars: [bar],
-        meta: {
-          noData: false
-        }
-      })
-    },
     /**
      * 异步延迟等待
      */
@@ -382,8 +297,9 @@ export default {
           'symbol_info',
           'chart_markup_table',
           'control_bar',
-          'header_indicators' //指标btn
+          'header_indicators' ,//指标btn
           //   'study_templates'
+          'create_volume_indicator_by_default',//默认指标交易量
         ],
         enabled_features: [
           'header_widget', //顶部工具栏
@@ -557,14 +473,15 @@ export default {
           //   { name: "Stock", value: "stock" },
           //   { name: "Index", value: "index" }
           // ],
-          supported_resolutions: ['1', '5', '15', '30', '60', 'D', '1W', '1M']
+          supported_resolutions: ['1', '5', '15', '30', '60', 'D'
+          // , '1W', '1M'
+          ]
         }
       })
     }
   },
   created() {
     this.initDatafeed()
-    // this.initWebSocket()
     this.initSockJs()
   },
   mounted() {

@@ -4,7 +4,7 @@ export const chartResolution = {
     '15': '15min',
     '30': '30min',
     '60': '60min',
-    D: '1day',
+    '1D': '1day',
     '1W': '1week',
     '1M': '1mon'
 }
@@ -31,4 +31,12 @@ export const chartStyle = {
     'Kagi': 5,//卡吉图
     'Point&Figure': 6,//点数图
     'Line Break': 7,//新价图
+}
+
+
+export const lineStyle = {
+    'LINESTYLE_SOLID': 0,
+    'LINESTYLE_DOTTED': 1,
+    'LINESTYLE_DASHED': 2,
+    'LINESTYLE_LARGE_DASHED': 3
 }
