@@ -69,7 +69,7 @@ export default {
     },
     isLoading: {
       handler(newVal, oldVal) {
-        console.log(newVal)
+        console.log('--isLoading--',newVal)
       },
       deep: true,
       immediate: true
@@ -142,19 +142,8 @@ export default {
 
       list.sort((a, b) => a.time - b.time)
 
-      console.log(this.datafeed)
-    //   this.datafeed.updateData({
-    //     bars: list,
-    //     meta: {
-    //       noData: false
-    //     }
-    //   })
-      this.datafeed.updateData({
-        bars: list,
-        meta: {
-          noData: true
-        }
-      })
+      console.log(list,'历史消息')
+
       this.klineData = list
       this.isLoading = true
       this.hasSubHistory = true
@@ -198,12 +187,13 @@ export default {
 
       this.stompClient.connect({}, () => {
         const ps = new Promise((resolve, reject) => {
-          this.subHistory(this.resolution)
+          this.subTicker(this.resolution)
           resolve()
         })
 
         ps.then(() => {
-          this.subTicker(this.resolution)
+          this.subHistory(this.resolution)
+          
         })
 
       })
@@ -297,7 +287,7 @@ export default {
           'symbol_info',
           'chart_markup_table',
           'control_bar',
-          'header_indicators' ,//指标btn
+          // 'header_indicators' ,//指标btn
           //   'study_templates'
           'create_volume_indicator_by_default',//默认指标交易量
         ],
@@ -321,13 +311,10 @@ export default {
      * 获取块
      */
     async getBars(symbol, resolution, from, to, isFirst) {
-      console.log('----isFirst----', isFirst)
+      console.warn('----isFirst----', isFirst)
       if (this.resolution !== resolution && this.socketJS) {
         console.log('切换分辨率', resolution)
 
-        
-        
-        
         this.resolution = resolution
 
         const ps = new Promise((resolve,reject)=>{
@@ -351,15 +338,33 @@ export default {
       if (this.isLoading && !this.klineData.length) {
         this.isLoading = false
       }
+
       const data = await this.delayAwait()
-      this.klineData = []
-      this.awaitCount = 0
-      return {
-        bars: data,
-        meta: {
-          noData: !data.length
+
+      if(!isFirst){
+        
+        console.warn(data)
+        this.klineData = []
+        this.awaitCount = 0
+        return {
+          bars: data,
+          // meta: {
+          //   noData: false
+          // }
         }
       }
+
+      if(isFirst){
+        this.klineData = []
+        this.awaitCount = 0
+        return {
+          bars: data,
+          // meta: {
+          //   noData: true
+          // }
+        }
+      }
+      
     },
     defaultSymbol() {
       return new Promise(resolve => {
