@@ -738,6 +738,7 @@ export default {
     const isShow = this.showEcharts
     return (
       <div class="view-container">
+        <div class="mask" style={{display: isShow?'none':'block'}}></div> 
         <div id="tv_chart_container" style={{width:'100%',height:'400px'}}></div>
         <div class="echart-container" style={{display: isShow?'block':'none'}}>
           <echarts-line />
@@ -749,6 +750,14 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.mask{
+  position: absolute;
+      bottom: 4px;
+    right: 4px;
+    width: 56px;
+    height: 25px;
+  background-color: #fff;
+}
 .view-container {
   position: relative;
   top: 0;
