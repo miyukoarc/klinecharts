@@ -1,10 +1,8 @@
 <template>
   <div class="view-container">
-    <div class="mask">
-
-    </div>
-    <div id="tv_chart_container" style="width:100%;height:400px;">
-      
+    <div id="tv_chart_container" style="width:100%;height:400px;"></div>
+    <div class="echart-container" v-show="showEcharts">
+      <echarts-line />
     </div>
   </div>
 </template>
@@ -18,13 +16,22 @@ import {
   chartStyle
 } from '../utils/resolution'
 import { LibrarySymbolInfo, Bar } from 'trader-view'
+import EchartsLine from './kline-echart'
 
 import stomp from 'webstomp-client'
 import SockJS from 'sockjs-client'
 
 export default {
+  components:{
+    EchartsLine
+  },
   data() {
     return {
+      showEcharts: false,
+      tempStamp: 0,
+      tickerCount: 0,
+      data: [],
+      myChart: null,
       widget: null,
       datafeed: null,
       socket: null,
@@ -37,14 +44,28 @@ export default {
       tickerTimestamp: 0,
       historyTimestamp: 0,
       hasSubHistory: false,
+      hasMA5: false,
+      hasMA10: false,
+      hasIndicator: false,
       overrides: {
-        'mainSeriesProperties.style': chartStyle['Area'],
+        // 'mainSeriesProperties.style': chartStyle['Area']
       },
       historySub: null,
-      tickerSub: null
+      tickerSub: null,
+      echartsSeed: [],
+      
     }
   },
   watch: {
+    echartsSeed: {
+      handler(newVal, oldVal){
+        this.myChart.setOption({
+            series: [{
+                data: newVal
+            }]
+        });
+      }
+    },
     resolution: {
       handler(newVal, oldVal) {
         console.warn(
@@ -74,89 +95,151 @@ export default {
     },
     isLoading: {
       handler(newVal, oldVal) {
-        console.log('--isLoading--',newVal)
+        console.log('--isLoading--', newVal)
       },
       deep: true,
       immediate: true
     }
   },
   methods: {
-    initWidgetBtn (){
-      if(this.widget){
-        this.widget.headerReady().then(()=> {
+    initWidgetBtn() {
+      if (this.widget) {
+        this.widget.headerReady().then(() => {
+          const btnTS = this.widget.createButton()
+          btnTS.setAttribute('title','btnTS')
+          btnTS.addEventListener('click',() => {
+            this.showEcharts = !this.showEcharts
+          })
+          btnTS.textContent = '分时'
 
-
-            const btnMA5 = this.widget.createButton()
-            btnMA5.setAttribute('title', 'My custom button tooltip')
-            btnMA5.addEventListener('click', ()=>{
+          const btnMA5 = this.widget.createButton()
+          btnMA5.setAttribute('title', 'My custom button tooltip')
+          btnMA5.addEventListener('click', () => {
+            if(this.hasMA5==false){
               this.watchWidget(this.initMA5)
-            })
-            btnMA5.textContent = 'MA 5'
+            }
+            this.hasMA5 = true
+            
+            if(this.showEcharts){
+              this.showEcharts = !this.showEcharts
+            }
+          })
+          btnMA5.textContent = 'MA 5'
 
-            const btnMA10 = this.widget.createButton()
-            btnMA10.setAttribute('title', 'My custom button tooltip')
-            btnMA10.addEventListener('click', ()=>{
+          const btnMA10 = this.widget.createButton()
+          btnMA10.setAttribute('title', 'My custom button tooltip')
+          btnMA10.addEventListener('click', () => {
+            if(this.hasMA10==false){
               this.watchWidget(this.initMA10)
-            })
-            btnMA10.textContent = 'MA10'
+            }
+            this.hasMA10 = true
+            
+            if(this.showEcharts){
+              this.showEcharts = !this.showEcharts
+            }
+          })
+          btnMA10.textContent = 'MA10'
 
+          const btnBOLL = this.widget.createButton()
+          btnBOLL.setAttribute('title', 'My custom button tooltip')
+          btnBOLL.addEventListener('click', () => {
+            // this.widget.chart().executeActionById('studyHide')
+            this.widget.chart().removeAllStudies()
 
-            const btnBOLL = this.widget.createButton()
-            btnBOLL.setAttribute('title', 'My custom button tooltip')
-            btnBOLL.addEventListener('click', ()=>{
-              this.watchWidget(this.initBoll)
-            })
-            btnBOLL.textContent = 'BOLL'
+            this.watchWidget(this.initBoll)
 
-            const btnKDJ = this.widget.createButton()
-            btnKDJ.setAttribute('title', 'My custom button tooltip')
-            btnKDJ.addEventListener('click', ()=>{
+            
+            if(this.showEcharts){
+              this.showEcharts = !this.showEcharts
+            }
+          })
+          btnBOLL.textContent = 'BOLL'
+
+          const btnKDJ = this.widget.createButton()
+          btnKDJ.setAttribute('title', 'My custom button tooltip')
+          btnKDJ.addEventListener('click', () => {
+            // this.widget.chart().executeActionById('studyHide')
+            this.widget.chart().removeAllStudies()
               this.watchWidget(this.initKDJ)
-            })
-            btnKDJ.textContent = 'KDJ'
+              console.log(this.widget.chart().getAllStudies())
 
-            const btnRSI = this.widget.createButton()
-            btnRSI.setAttribute('title', 'My custom button tooltip')
-            btnRSI.addEventListener('click', ()=>{
-              this.watchWidget(this.initRSI)
-            })
-            btnRSI.textContent = 'RSI'
+            
+            if(this.showEcharts){
+              this.showEcharts = !this.showEcharts
+            }
+          })
+          btnKDJ.textContent = 'KDJ'
 
-            const btnWR = this.widget.createButton()
-            btnWR.setAttribute('title', 'My custom button tooltip')
-            btnWR.addEventListener('click', ()=>{
+          const btnRSI = this.widget.createButton()
+          btnRSI.setAttribute('title', 'My custom button tooltip')
+          btnRSI.addEventListener('click', () => {
+            // this.widget.chart().executeActionById('studyHide')
+            this.widget.chart().removeAllStudies()
+
               this.watchWidget(this.initRSI)
-            })
-            btnWR.textContent = 'WR'
-         });
+            
+
+            
+            if(this.showEcharts){
+              this.showEcharts = !this.showEcharts
+            }
+          })
+          btnRSI.textContent = 'RSI'
+
+          const btnWR = this.widget.createButton()
+          btnWR.setAttribute('title', 'My custom button tooltip')
+          btnWR.addEventListener('click', () => {
+            // this.widget.chart().executeActionById('studyHide')
+            this.widget.chart().removeAllStudies()
+
+              this.watchWidget(this.initWR)
+
+            
+            if(this.showEcharts){
+              this.showEcharts = !this.showEcharts
+            }
+          })
+          btnWR.textContent = 'WR'
+        })
       }
-      
     },
-    initMA5(){
-      this.widget.chart().createStudy('Moving Average', false, false, [5], {'Plot.linewidth': 4,})
+    initMA5() {
+      this.widget
+        .chart()
+        .createStudy('Moving Average', false, false, [5], {
+          'Plot.linewidth': 4
+        })
     },
-    initMA10(){
-      this.widget.chart().createStudy('Moving Average', false, false, [10], {'Plot.linewidth': 4,})
+    initMA10() {
+      this.widget
+        .chart()
+        .createStudy('Moving Average', false, false, [10], {
+          'Plot.linewidth': 4
+        })
     },
-    initBoll(){
-      this.widget.chart().createStudy('Bollinger Bands %B', true, false, [20,2])
+    initBoll() {
+      this.widget
+        .chart()
+        .createStudy('Bollinger Bands %B', false, false, [20, 2])
     },
-    initKDJ(){
-      this.widget.chart().createStudy('Stochastic', true, false, [14,1,3])
+    initKDJ() {
+      this.widget.chart().createStudy('Stochastic', false, false, [14, 1, 3])
     },
-    initRSI(){
-      this.widget.chart().createStudy('Relative Strength Index', true, false, [14])
+    initRSI() {
+      this.widget
+        .chart()
+        .createStudy('Relative Strength Index', false, false, [14])
     },
-    initWR(){
-      this.widget.chart().createStudy('Williams %R', true, false, [14])
+    initWR() {
+      this.widget.chart().createStudy('Williams %R', false, false, [14])
     },
-    initWidgetOption(){
+    initWidgetOption() {
       this.widget.applyOverrides(this.overrides)
     },
     /**
      * widgetReady钩子
      */
-    watchWidget(func,val) {
+    watchWidget(func, val) {
       if (this.widget) {
         this.widget.onChartReady(() => {
           func(val)
@@ -175,8 +258,16 @@ export default {
           let context = JSON.parse(body.context)
           let parseData = context.data
 
+          console.warn(body)
+
+          // parseData.forEach((item,index)=>{
+          //   this.echartsSeed.push({
+          //     name: this.$dayjs(item.timestamp*1000).$d,
+          //     value: [this.$dayjs(item.timestamp*1000).format('HH:mm:ss'), item.low]
+          //   })
+          // })
+
           this.handleHistory(parseData)
-          
         }
       )
     },
@@ -190,9 +281,25 @@ export default {
           let body = JSON.parse(msg.body)
           let context = JSON.parse(body.context)
           let parseData = context.data
-          console.log(parseData)
-          this.handleTicker(parseData)
 
+          if(this.echartsSeed.length>100){
+            this.echartsSeed.shift()
+          }
+
+          // console.log(body)
+          // if(body.timestamp-this.tempStamp>1000){
+
+            // this.tempStamp = body.timestamp
+
+          //   this.echartsSeed.push({
+          //     name: this.$dayjs(body.timestamp*1000).$d,
+          //     value: [this.$dayjs(body.timestamp*1000).format('HH:mm:ss'), parseData.low]
+          // })
+            
+          // }
+
+          
+          this.handleTicker(parseData)
         }
       )
     },
@@ -219,12 +326,13 @@ export default {
 
       list.sort((a, b) => a.time - b.time)
 
-      console.log(list,'历史消息')
+      console.log(list, '历史消息')
 
       this.klineData = list
+
       this.isLoading = true
       this.hasSubHistory = true
-      
+
       // console.log(this.klineData, '历史数据')
     },
     /**
@@ -258,7 +366,7 @@ export default {
      */
     initSockJs() {
       this.socketJS = new SockJS(
-        `http://10.10.10.245:20007/websocket?access_token=8c3b8898-bb27-4d19-92ff-8a564a151f42`
+        `http://10.10.10.245:20007/websocket?access_token=0a6df1b5-20d4-44c5-b811-574a64cea210`
       )
       this.stompClient = stomp.over(this.socketJS, { debug: false })
 
@@ -268,11 +376,13 @@ export default {
           resolve()
         })
 
+
+
         ps.then(() => {
           this.subHistory(this.resolution)
-          
         })
 
+        
       })
     },
     /**
@@ -342,8 +452,8 @@ export default {
           'use_localstorage_for_settings',
           'left_toolbar', //左侧工具栏
           'header_symbol_search',
-            'adaptive_logo',//移动端图标
-          'property_pages',//指标设置
+          'adaptive_logo', //移动端图标
+          'property_pages', //指标设置
           'header_widget_dom_node', //顶部工具栏DOM节点
 
           'header_compare', //比较btn
@@ -358,20 +468,19 @@ export default {
 
           'timeframes_toolbar', //底部事件工具栏
           'symbol_search_hot_key', //搜索热键
-            // 'volume_force_overlay',//买卖数量和主界面重叠
+          // 'volume_force_overlay',//买卖数量和主界面重叠
           'pane_context_menu',
           'timezone_menu',
           // 'symbol_info',
           // 'chart_markup_table',
           // 'control_bar',
-          'header_indicators' ,//指标btn
+          'header_indicators' //指标btn
           //   'study_templates'
           // 'create_volume_indicator_by_default',//默认指标交易量
         ],
         enabled_features: [
           'header_widget', //顶部工具栏
-          'header_resolutions', //分辨率
-          
+          'header_resolutions' //分辨率
         ],
         charts_storage_url: 'http://saveload.tradingview.com',
         charts_storage_api_version: '1.1',
@@ -396,19 +505,16 @@ export default {
 
         this.resolution = resolution
 
-        const ps = new Promise((resolve,reject)=>{
-            this.tickerSub.unsubscribe()
-            this.subTicker(resolution)
-            
-            resolve()
+        const ps = new Promise((resolve, reject) => {
+          this.tickerSub.unsubscribe()
+          this.subTicker(resolution)
+
+          resolve()
         })
 
-        ps.then(()=>{
-            this.subHistory(resolution)
-            
+        ps.then(() => {
+          this.subHistory(resolution)
         })
-        
-        
       }
       /**
        *
@@ -420,31 +526,29 @@ export default {
 
       const data = await this.delayAwait()
 
-      if(!isFirst){
-        
+      if (!isFirst) {
         console.warn(data)
         this.klineData = []
         this.awaitCount = 0
         return {
-          bars: data,
+          bars: data
           // meta: {
           //   noData: false
           // }
         }
       }
 
-      if(isFirst){
+      if (isFirst) {
         console.warn(data)
-        this.klineData = []
+        // this.klineData = []
         this.awaitCount = 0
         return {
-          bars: data,
+          bars: data
           // meta: {
           //   noData: true
           // }
         }
       }
-      
     },
     defaultSymbol() {
       return new Promise(resolve => {
@@ -500,8 +604,14 @@ export default {
           /**
            * An array of resolutions which should be enabled in resolutions picker for this symbol.
            */
-          supported_resolutions: ['1', '5', '15', '30', '60', 'D'
-          /*, '1W', '1M'*/
+          supported_resolutions: [
+            '1',
+            '5',
+            '15',
+            '30',
+            '60',
+            'D'
+            /*, '1W', '1M'*/
           ]
           /**
            * @example (for ex.: "1,5,60") - only these resolutions will be requested, all others will be built using them if possible
@@ -558,11 +668,61 @@ export default {
           //   { name: "Stock", value: "stock" },
           //   { name: "Index", value: "index" }
           // ],
-          supported_resolutions: ['1', '5', '15', '30', '60', 'D'
-          // , '1W', '1M'
+          supported_resolutions: [
+            '1',
+            '5',
+            '15',
+            '30',
+            '60',
+            'D'
+            // , '1W', '1M'
           ]
         }
       })
+    },
+
+    randomData() {
+      let now = +new Date(1997, 9, 3);
+      let oneDay = 24 * 3600 * 1000;
+      let value = Math.random() * 1000;
+      now = new Date(+now + oneDay);
+      value = value + Math.random() * 21 - 10;
+      return {
+          name: now.toString(),
+          value: [
+              [now.getFullYear(), now.getMonth() + 1, now.getDate()].join('/'),
+              Math.round(value)
+          ]
+      };
+    },
+    initEchartsData(){
+      function randomData() {
+          now = new Date(+now + oneDay);
+          value = value + Math.random() * 21 - 10;
+          return {
+              name: now.toString(),
+              value: [
+                  [now.getFullYear(), now.getMonth() + 1, now.getDate()].join('/'),
+                  Math.round(value)
+              ]
+          };
+      }
+      var now = +new Date(1997, 9, 3);
+      var oneDay = 24 * 3600 * 1000;
+      var value = Math.random() * 1000;
+      for (var i = 0; i < 1000; i++) {
+          this.data.push(randomData());
+      }
+
+      setInterval(()=> {
+
+          for (var i = 0; i < 5; i++) {
+              this.data.shift();
+              this.data.push(randomData());
+          }
+
+      }, 1000);
+      
     }
   },
   created() {
@@ -570,6 +730,9 @@ export default {
     this.initSockJs()
   },
   mounted() {
+    // this.getRealTime()
+    // this.initEchartsData()
+    // this.initEcharts()
     window.addEventListener(
       'DOMContentLoaded',
       this.initTradingView.bind(this),
@@ -580,4 +743,17 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.view-container {
+  position: relative;
+  top: 0;
+  left: 0;
+}
+#echarts {
+  position: absolute;
+  background-color: #fff;
+  top: 38px;
+  left: 0px;
+  width: 398px;
+  height: 362px;
+}
 </style>
