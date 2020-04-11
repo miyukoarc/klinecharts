@@ -1,11 +1,3 @@
-<template>
-  <div class="view-container">
-    <div id="tv_chart_container" style="width:100%;height:400px;"></div>
-    <div class="echart-container" v-show="showEcharts">
-      <echarts-line />
-    </div>
-  </div>
-</template>
 
 <script>
 import { TradingView, Datafeed } from 'trader-view'
@@ -612,12 +604,15 @@ export default {
             '60',
             'D'
             /*, '1W', '1M'*/
-          ]
+          ],
           /**
            * @example (for ex.: "1,5,60") - only these resolutions will be requested, all others will be built using them if possible
            */
           // intraday_multipliers?: string[];
           // has_seconds?: boolean;
+          hase_seconds: true,
+          seconds_multipliers: ['1S']
+
           /**
            * It is an array containing seconds resolutions (in seconds without a postfix) the datafeed builds by itself.
            */
@@ -737,6 +732,17 @@ export default {
       'DOMContentLoaded',
       this.initTradingView.bind(this),
       false
+    )
+  },
+  render(){
+    const isShow = this.showEcharts
+    return (
+      <div class="view-container">
+        <div id="tv_chart_container" style={{width:'100%',height:'400px'}}></div>
+        <div class="echart-container" style={{display: isShow?'block':'none'}}>
+          <echarts-line />
+        </div>
+      </div>
     )
   }
 }
