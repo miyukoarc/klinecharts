@@ -358,7 +358,7 @@ export default {
      */
     initSockJs() {
       this.socketJS = new SockJS(
-        `http://10.10.10.245:20007/websocket?access_token=0a6df1b5-20d4-44c5-b811-574a64cea210`
+        `http://10.10.10.245:20007/websocket?access_token=dc020d63-3aef-4a1a-b8b9-30574ab7dd41`
       )
       this.stompClient = stomp.over(this.socketJS, { debug: false })
 
@@ -474,7 +474,7 @@ export default {
           'header_widget', //顶部工具栏
           'header_resolutions' //分辨率
         ],
-        charts_storage_url: 'http://saveload.tradingview.com',
+        charts_storage_url: '#',
         charts_storage_api_version: '1.1',
         client_id: 'tradingview.com',
         user_id: 'public_user_id',

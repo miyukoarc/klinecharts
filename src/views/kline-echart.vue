@@ -8,6 +8,7 @@ export default {
   data() {
     return {
       tempStamp: 0,
+      tickerStamp: 0,
       symbol: 'btc',
       myChart: null,
       socketJS: null,
@@ -46,9 +47,6 @@ export default {
           axisTick: {
             show: false
           },
-          // axisPointer: {
-          //   snap: true
-          // },
           boundaryGap: ['0', '20%']
         },
         yAxis: {
@@ -141,7 +139,7 @@ export default {
     },
     initSockJs() {
       this.socketJS = new SockJS(
-        `http://10.10.10.245:20007/websocket?access_token=0a6df1b5-20d4-44c5-b811-574a64cea210`
+        `http://10.10.10.245:20007/websocket?access_token=dc020d63-3aef-4a1a-b8b9-30574ab7dd41`
       )
 
       this.stompClient = stomp.over(this.socketJS, { debug: false })
@@ -151,18 +149,14 @@ export default {
           const body = JSON.parse(msg.body)
 
           if (body.context.includes(this.symbol)) {
-            // console.log({
-            //   name: this.$dayjs(body.timestamp).$d,
-            //   value: [
-            //     this.$dayjs(body.timestamp).format('YYYY/MM/DD HH:mm:ss'),
-            //     body.context.split(':')[1]
-            //   ]
-            // })
+            const currStamp = Math.round(body.timestamp / 1000) * 1000
+            if(this.tickerStamp!=currStamp){
+              this.tickerStamp = currStamp
 
-            let item = {
-              name: this.$dayjs(body.timestamp).$d,
+              let item = {
+              name: this.$dayjs(currStamp).$d,
               value: [
-                this.$dayjs(body.timestamp).format('YYYY/MM/DD HH:mm:ss'),
+                this.$dayjs(currStamp).format('YYYY/MM/DD HH:mm:ss'),
                 body.context.split(':')[1]
               ]
             }
@@ -173,6 +167,18 @@ export default {
             }
 
             this.echartsSeed.push(item)
+
+            }
+            console.log()
+            // console.log({
+            //   name: this.$dayjs(body.timestamp).$d,
+            //   value: [
+            //     this.$dayjs(body.timestamp).format('YYYY/MM/DD HH:mm:ss'),
+            //     body.context.split(':')[1]
+            //   ]
+            // })
+
+            
           }
         })
       })
@@ -184,7 +190,7 @@ export default {
     },
     getRealTimeHistory() {
       fetch(
-        `http://10.10.10.245:20007/huobi/getHistoricalTrade?access_token=0a6df1b5-20d4-44c5-b811-574a64cea210&symbol=${this.symbol}usdt&size=300`
+        `http://10.10.10.245:20007/huobi/getHistoricalTrade?access_token=dc020d63-3aef-4a1a-b8b9-30574ab7dd41&symbol=${this.symbol}usdt&size=300`
       )
         .then(res => res.json())
         .then(async data => {
