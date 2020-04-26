@@ -29,9 +29,10 @@ export default {
           trigger: 'axis',
           formatter: function(params) {
             return (
-              dayjs(params[0][0]).format('HH:mm:ss') +
-              ':' +
-              parseInt(params[0].value[1]).toFixed(2)
+              // dayjs(params[0][0]).format('HH:mm:ss') +
+              // ':' +
+              ''+
+              parseFloat(params[0].value[1]).toFixed(2)
             )
           }
           // axisPointer: {
@@ -47,7 +48,7 @@ export default {
           axisTick: {
             show: false
           },
-          boundaryGap: ['0', '20%']
+          boundaryGap: true,
         },
         yAxis: {
           type: 'value',
@@ -64,7 +65,7 @@ export default {
           },
           axisLabel: {
             show: true,
-            inside: false
+            inside: true
           },
 
           splitLine: {
@@ -257,6 +258,3 @@ export default {
   }
 }
 </script>
-
-<style>
-</style>

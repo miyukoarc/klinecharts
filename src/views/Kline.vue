@@ -763,12 +763,16 @@ export default {
   top: 0;
   left: 0;
 }
+.echart-container{
+  width: 100%;
+  
+}
 #echarts {
   position: absolute;
   background-color: #fff;
   top: 38px;
   left: 0px;
-  width: 398px;
+  width: 375px;
   height: 362px;
 }
 </style>
