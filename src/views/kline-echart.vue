@@ -155,29 +155,21 @@ export default {
               this.tickerStamp = currStamp
 
               let item = {
-              name: this.$dayjs(currStamp).$d,
-              value: [
-                this.$dayjs(currStamp).format('YYYY/MM/DD HH:mm:ss'),
-                body.context.split(':')[1]
-              ]
-            }
+                name: this.$dayjs(currStamp).$d,
+                value: [
+                  this.$dayjs(currStamp).format('YYYY/MM/DD HH:mm:ss'),
+                  body.context.split(':')[1]
+                ]
+              }
 
-            if (this.echartsSeed.length > 50) {
-              this.echartsSeed.shift()
-              this.echartsSeed
-            }
+              if (this.echartsSeed.length > 50) {
+                this.echartsSeed.shift()
+                this.echartsSeed
+              }
 
-            this.echartsSeed.push(item)
+              this.echartsSeed.push(item)
 
             }
-            console.log()
-            // console.log({
-            //   name: this.$dayjs(body.timestamp).$d,
-            //   value: [
-            //     this.$dayjs(body.timestamp).format('YYYY/MM/DD HH:mm:ss'),
-            //     body.context.split(':')[1]
-            //   ]
-            // })
 
             
           }

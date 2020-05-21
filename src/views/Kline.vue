@@ -46,6 +46,7 @@ export default {
       tickerSub: null,
       echartsSeed: [],
       
+      
     }
   },
   watch: {
@@ -100,13 +101,18 @@ export default {
           const btnTS = this.widget.createButton()
           btnTS.setAttribute('title','btnTS')
           btnTS.addEventListener('click',() => {
-            this.showEcharts = !this.showEcharts
+              
+
+            // this.showEcharts = !this.showEcharts
           })
           btnTS.textContent = '分时'
 
           const btnMA5 = this.widget.createButton()
           btnMA5.setAttribute('title', 'My custom button tooltip')
           btnMA5.addEventListener('click', () => {
+
+              console.log()
+              
             if(this.hasMA5==false){
               this.watchWidget(this.initMA5)
             }
@@ -424,7 +430,7 @@ export default {
         return
       }
       this.widget = new TradingView({
-        // debug: true, // uncomment this line to see Library errors and warnings in the console
+        debug: true, // uncomment this line to see Library errors and warnings in the console
         fullscreen: false,
         autosize: true,
         symbol: 'BTC/USDT',
@@ -444,7 +450,7 @@ export default {
           'use_localstorage_for_settings',
           'left_toolbar', //左侧工具栏
           'header_symbol_search',
-          'adaptive_logo', //移动端图标
+          'adaptive_logo', //移动端图标的文本隐藏
           'property_pages', //指标设置
           'header_widget_dom_node', //顶部工具栏DOM节点
 
@@ -462,13 +468,15 @@ export default {
           'symbol_search_hot_key', //搜索热键
           // 'volume_force_overlay',//买卖数量和主界面重叠
           'pane_context_menu',
-          'timezone_menu',
-          // 'symbol_info',
+          'timezone_menu',//事件轴菜单
+          'symbol_info',
           // 'chart_markup_table',
           // 'control_bar',
-          'header_indicators' //指标btn
-          //   'study_templates'
-          // 'create_volume_indicator_by_default',//默认指标交易量
+          'legend_context_menu',//图例内容菜单
+          'header_indicators', //指标btn
+          'study_templates',//指标对比
+          'disable_market_status',
+          'create_volume_indicator_by_default',//默认指标交易量面板
         ],
         enabled_features: [
           'header_widget', //顶部工具栏
